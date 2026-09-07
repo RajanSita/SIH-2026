@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets ──────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #08090B;
+  color: #E8EAF0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar styling ────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E2029;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2A2D3A;
+}
+
+/* ── Selection ────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(59, 130, 246, 0.25);
+  color: #E8EAF0;
+}
+
+/* ── Utility: hairline border ─────────────────────────────────────────────── */
+.border-hairline {
+  border-color: #1E2029;
+}
+
+/* ── Risk badge utility classes ───────────────────────────────────────────── */
+@layer components {
+  .risk-dot-green  { @apply w-2 h-2 rounded-full bg-risk-green; }
+  .risk-dot-yellow { @apply w-2 h-2 rounded-full bg-risk-yellow; }
+  .risk-dot-orange { @apply w-2 h-2 rounded-full bg-risk-orange; }
+  .risk-dot-red    { @apply w-2 h-2 rounded-full bg-risk-red; }
+
+  .badge-operational { @apply text-risk-green  bg-risk-green/10  border border-risk-green/20  text-2xs font-mono uppercase tracking-widest px-2 py-0.5 rounded; }
+  .badge-elevated    { @apply text-risk-yellow bg-risk-yellow/10 border border-risk-yellow/20 text-2xs font-mono uppercase tracking-widest px-2 py-0.5 rounded; }
+  .badge-high        { @apply text-risk-orange bg-risk-orange/10 border border-risk-orange/20 text-2xs font-mono uppercase tracking-widest px-2 py-0.5 rounded; }
+  .badge-critical    { @apply text-risk-red    bg-risk-red/10    border border-risk-red/20    text-2xs font-mono uppercase tracking-widest px-2 py-0.5 rounded; }
+
+  .panel-label {
+    @apply text-2xs font-mono uppercase tracking-[0.15em] text-ink-faint;
+  }
+  .panel-value {
+    @apply text-sm font-semibold text-ink font-mono;
+  }
+  .section-divider {
+    @apply border-t border-hairline;
+  }
+}
