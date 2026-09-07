@@ -44,7 +44,7 @@ An operator describes a threat in natural language. The system interprets it, pr
 | 5 | Timeline scrubber · Play/pause · Keyframes | ✅ Done |
 | 6 | Causal breakdown panel | ✅ Done |
 | 7 | Intervention trigger · Comparison panel | ✅ Done |
-| 8 | Polish · Transitions · Responsive | ⬜ Pending |
+| 8 | Polish · Transitions · Responsive | ✅ Done |
 | 9 | Bug fixes · Deploy | ⬜ Pending |
 
 ---

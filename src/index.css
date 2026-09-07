@@ -31,6 +31,31 @@
 }
 .maplibregl-ctrl-attrib a { color: #45495A !important; }
 
+/* ── MapLibre Popup styling ───────────────────────────────────────────────── */
+.maplibregl-popup-content {
+  background: rgba(15, 17, 23, 0.95) !important;
+  border: 1px solid #1E2029 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+  padding: 10px 14px !important;
+  color: #E8EAF0 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  backdrop-filter: blur(8px) !important;
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: #1E2029 !important; }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #1E2029 !important; }
+.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: #1E2029 !important; }
+.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: #1E2029 !important; }
+.maplibregl-popup-close-button {
+  color: #8B90A0 !important;
+  padding: 4px 8px !important;
+  font-size: 14px !important;
+}
+.maplibregl-popup-close-button:hover {
+  color: #E8EAF0 !important;
+  background: transparent !important;
+}
+
 
 /* ── Base resets ──────────────────────────────────────────────────────────── */
 *, *::before, *::after {

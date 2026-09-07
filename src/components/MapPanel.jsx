@@ -132,6 +132,82 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
       initLayers(map)
       sourcesReady.current = true
       applyStateToMap(map, buildIdleState())
+
+      // ── Cursor pointer for interactive 3D layers ─────────────────────────
+      const interactiveLayers = [LYR.BUILDINGS_EXTRUSION, LYR.SHELTERS_CIRCLE]
+      interactiveLayers.forEach((lyrId) => {
+        map.on('mouseenter', lyrId, () => {
+          map.getCanvas().style.cursor = 'pointer'
+        })
+        map.on('mouseleave', lyrId, () => {
+          map.getCanvas().style.cursor = ''
+        })
+      })
+
+      // ── Building click popup ─────────────────────────────────────────────
+      map.on('click', LYR.BUILDINGS_EXTRUSION, (e) => {
+        if (!e.features?.length) return
+        const p = e.features[0].properties || {}
+        const coords = e.lngLat
+
+        const riskColor =
+          p.riskLevel === 'critical' ? '#EF4444' :
+          p.riskLevel === 'high'     ? '#F97316' :
+          p.riskLevel === 'elevated' ? '#EAB308' : '#22C55E'
+
+        new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
+          .setLngLat(coords)
+          .setHTML(`
+            <div style="min-width: 175px; font-family: monospace;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Building'}</strong>
+                <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${riskColor}; border: 1px solid ${riskColor}50; background: ${riskColor}15;">
+                  ${p.riskLevel || 'LOW'}
+                </span>
+              </div>
+              <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
+                TYPE: <span style="color: #E8EAF0; text-transform: uppercase;">${p.type || 'LANDMARK'}</span>
+              </div>
+              <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
+                STATUS: <span style="color: #E8EAF0; font-weight: bold;">${p.status || 'OPERATIONAL'}</span>
+              </div>
+              ${p.population ? `<div style="font-size: 10px; color: #8B90A0;">POPULATION: <span style="color: #E8EAF0;">${Number(p.population).toLocaleString()}</span></div>` : ''}
+            </div>
+          `)
+          .addTo(map)
+      })
+
+      // ── Shelter click popup ──────────────────────────────────────────────
+      map.on('click', LYR.SHELTERS_CIRCLE, (e) => {
+        if (!e.features?.length) return
+        const p = e.features[0].properties || {}
+        const coords = e.lngLat
+
+        const stateColor =
+          p.state === 'overloaded' ? '#EF4444' :
+          p.state === 'strained'   ? '#EAB308' : '#22C55E'
+
+        new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
+          .setLngLat(coords)
+          .setHTML(`
+            <div style="min-width: 180px; font-family: monospace;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Emergency Shelter'}</strong>
+                <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${stateColor}; border: 1px solid ${stateColor}50; background: ${stateColor}15;">
+                  ${p.state || 'AVAILABLE'}
+                </span>
+              </div>
+              <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
+                CAPACITY: <span style="color: #E8EAF0;">${Number(p.capacity || 0).toLocaleString()}</span>
+              </div>
+              ${p.occupancy ? `<div style="font-size: 10px; color: #8B90A0;">OCCUPANCY: <span style="color: #E8EAF0; font-weight: bold;">${Number(p.occupancy).toLocaleString()} (${p.utilizationPercent || 0}%)</span></div>` : ''}
+              <div style="font-size: 10px; color: #8B90A0; margin-top: 2px;">
+                STATUS: <span style="color: #E8EAF0;">${p.status || 'ACCEPTING'}</span>
+              </div>
+            </div>
+          `)
+          .addTo(map)
+      })
     })
 
     map.on('error', (e) => {
