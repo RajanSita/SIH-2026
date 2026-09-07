@@ -42,7 +42,7 @@ An operator describes a threat in natural language. The system interprets it, pr
 | 3 | MapLibre 3D map · Buildings · Roads · Shelters | ✅ Done |
 | 4 | Scenario input · Keyword matcher · AI delay | ✅ Done |
 | 5 | Timeline scrubber · Play/pause · Keyframes | ✅ Done |
-| 6 | Causal breakdown panel | ⬜ Pending |
+| 6 | Causal breakdown panel | ✅ Done |
 | 7 | Intervention trigger · Comparison panel | ⬜ Pending |
 | 8 | Polish · Transitions · Responsive | ⬜ Pending |
 | 9 | Bug fixes · Deploy | ⬜ Pending |

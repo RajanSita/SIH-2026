@@ -13,8 +13,9 @@
  *   └─────────────────┘
  */
 
-import QuickStats    from './QuickStats.jsx'
-import ScenarioChat  from './ScenarioChat.jsx'
+import QuickStats      from './QuickStats.jsx'
+import ScenarioChat    from './ScenarioChat.jsx'
+import CausalBreakdown from './CausalBreakdown.jsx'
 
 export default function RightRail({
   activeScenario,
@@ -40,15 +41,11 @@ export default function RightRail({
       {/* ── 2. Causal breakdown + Intervention comparison (Tasks 6 & 7) ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
 
-        {/* Causal breakdown — Task 6 placeholder */}
-        <section aria-label="Causal breakdown">
-          <SectionHeader label="CAUSAL BREAKDOWN" tag="Task 6" />
-          <PlaceholderBlock
-            icon="⬡"
-            title="Vulnerability Analysis"
-            subtitle="4-factor bar chart with primary driver detection — implemented in Task 6"
-          />
-        </section>
+        {/* Causal breakdown — Task 6 */}
+        <CausalBreakdown
+          activeScenario={activeScenario}
+          currentKeyframeIndex={currentKeyframeIndex}
+        />
 
         <div className="section-divider" />
 
