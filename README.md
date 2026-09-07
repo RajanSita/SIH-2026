@@ -45,7 +45,7 @@ An operator describes a threat in natural language. The system interprets it, pr
 | 6 | Causal breakdown panel | ✅ Done |
 | 7 | Intervention trigger · Comparison panel | ✅ Done |
 | 8 | Polish · Transitions · Responsive | ✅ Done |
-| 9 | Bug fixes · Deploy | ⬜ Pending |
+| 9 | Bug fixes · Rehearsal pass · Production build | ✅ Done |
 
 ---
 
