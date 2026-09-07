@@ -3,14 +3,13 @@
  *
  * MapLibre GL JS 3D Digital Twin hero map for Central Delhi.
  *
- * Lifecycle model (StrictMode-safe):
- *   mount → create map once → store in ref → add sources/layers on 'load'
- *   → update GeoJSON data on scenario/keyframe/intervention change
- *   → flyTo camera on scenario ID change
- *   → cleanup: null ref → map.remove()
- *
- * Sources:  sih-buildings | sih-roads | sih-shelters | sih-threat | sih-evac
- * Layers:   extrusion | line | circle | fill (threat) | line (evac)
+ * Features:
+ *   • Self-contained dark tactical style using OpenStreetMap with dark shader matrix
+ *     (Zero watermarks, zero API keys, instant load)
+ *   • 5 GeoJSON layers: 3D extruded buildings, multi-state roads, shelters, threat zone, evac routes
+ *   • Interactive 3D landmark markers floating over key locations with real-time risk badges
+ *   • Hover & click inspection popups for real-time facility telemetry
+ *   • StrictMode-safe lifecycle: map instance created once in ref
  */
 
 import { useEffect, useRef } from 'react'
@@ -32,16 +31,48 @@ import {
 } from '../utils/mapUtils.js'
 import { BUILDING_DEFS, ROAD_DEFS, SHELTER_DEFS } from '../data/scenarioData.js'
 
-// ── Map configuration ─────────────────────────────────────────────────────────
-
-// OpenFreeMap liberty style — free, no API key, real OSM data with 3D buildings
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+// ── Inline Dark Tactical Style (Zero watermark, zero API key, dark raster filter) ──
+const DARK_TACTICAL_STYLE = {
+  version: 8,
+  sources: {
+    'osm-base': {
+      type: 'raster',
+      tiles: [
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'background',
+      type: 'background',
+      paint: {
+        'background-color': '#08090B',
+      },
+    },
+    {
+      id: 'osm-dark-layer',
+      type: 'raster',
+      source: 'osm-base',
+      minzoom: 0,
+      maxzoom: 19,
+      paint: {
+        'raster-brightness-max': 0.42,
+        'raster-brightness-min': 0.05,
+        'raster-contrast': 0.35,
+        'raster-saturation': -0.92,
+      },
+    },
+  ],
+}
 
 const DEFAULT_VIEW = {
-  center:  [77.2200, 28.6200],
-  zoom:    13.0,
-  pitch:   48,
-  bearing: 0,
+  center:  [77.2250, 28.6180],
+  zoom:    13.6,
+  pitch:   54,
+  bearing: -12,
 }
 
 // ── Source and layer ID registry ──────────────────────────────────────────────
@@ -72,7 +103,7 @@ function buildIdleState() {
       ...d,
       riskLevel: 'low',
       status: 'MONITORING',
-      extrusionMultiplier: 0.5,
+      extrusionMultiplier: 0.8,
     })),
     roads: ROAD_DEFS.map((d) => ({
       ...d,
@@ -93,12 +124,13 @@ function buildIdleState() {
   }
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MapPanel({ activeScenario, currentKeyframeIndex, interventionApplied }) {
   const containerRef   = useRef(null)
   const mapRef         = useRef(null)
   const sourcesReady   = useRef(false)
+  const markersRef     = useRef([])
 
   // ── 1. Initialize map exactly once ────────────────────────────────────────
   useEffect(() => {
@@ -107,10 +139,10 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
 
     const map = new maplibregl.Map({
       container,
-      style:   STYLE_URL,
-      center:  DEFAULT_VIEW.center,
-      zoom:    DEFAULT_VIEW.zoom,
-      pitch:   DEFAULT_VIEW.pitch,
+      style: DARK_TACTICAL_STYLE,
+      center: DEFAULT_VIEW.center,
+      zoom: DEFAULT_VIEW.zoom,
+      pitch: DEFAULT_VIEW.pitch,
       bearing: DEFAULT_VIEW.bearing,
       antialias: true,
     })
@@ -131,7 +163,10 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
       initSources(map)
       initLayers(map)
       sourcesReady.current = true
-      applyStateToMap(map, buildIdleState())
+      
+      const initialState = buildIdleState()
+      applyStateToMap(map, initialState)
+      syncHTMLMarkers(map, initialState, markersRef)
 
       // ── Cursor pointer for interactive 3D layers ─────────────────────────
       const interactiveLayers = [LYR.BUILDINGS_EXTRUSION, LYR.SHELTERS_CIRCLE]
@@ -149,32 +184,7 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
         if (!e.features?.length) return
         const p = e.features[0].properties || {}
         const coords = e.lngLat
-
-        const riskColor =
-          p.riskLevel === 'critical' ? '#EF4444' :
-          p.riskLevel === 'high'     ? '#F97316' :
-          p.riskLevel === 'elevated' ? '#EAB308' : '#22C55E'
-
-        new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
-          .setLngLat(coords)
-          .setHTML(`
-            <div style="min-width: 175px; font-family: monospace;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Building'}</strong>
-                <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${riskColor}; border: 1px solid ${riskColor}50; background: ${riskColor}15;">
-                  ${p.riskLevel || 'LOW'}
-                </span>
-              </div>
-              <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
-                TYPE: <span style="color: #E8EAF0; text-transform: uppercase;">${p.type || 'LANDMARK'}</span>
-              </div>
-              <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
-                STATUS: <span style="color: #E8EAF0; font-weight: bold;">${p.status || 'OPERATIONAL'}</span>
-              </div>
-              ${p.population ? `<div style="font-size: 10px; color: #8B90A0;">POPULATION: <span style="color: #E8EAF0;">${Number(p.population).toLocaleString()}</span></div>` : ''}
-            </div>
-          `)
-          .addTo(map)
+        showBuildingPopup(map, p, coords)
       })
 
       // ── Shelter click popup ──────────────────────────────────────────────
@@ -182,41 +192,19 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
         if (!e.features?.length) return
         const p = e.features[0].properties || {}
         const coords = e.lngLat
-
-        const stateColor =
-          p.state === 'overloaded' ? '#EF4444' :
-          p.state === 'strained'   ? '#EAB308' : '#22C55E'
-
-        new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
-          .setLngLat(coords)
-          .setHTML(`
-            <div style="min-width: 180px; font-family: monospace;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Emergency Shelter'}</strong>
-                <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${stateColor}; border: 1px solid ${stateColor}50; background: ${stateColor}15;">
-                  ${p.state || 'AVAILABLE'}
-                </span>
-              </div>
-              <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
-                CAPACITY: <span style="color: #E8EAF0;">${Number(p.capacity || 0).toLocaleString()}</span>
-              </div>
-              ${p.occupancy ? `<div style="font-size: 10px; color: #8B90A0;">OCCUPANCY: <span style="color: #E8EAF0; font-weight: bold;">${Number(p.occupancy).toLocaleString()} (${p.utilizationPercent || 0}%)</span></div>` : ''}
-              <div style="font-size: 10px; color: #8B90A0; margin-top: 2px;">
-                STATUS: <span style="color: #E8EAF0;">${p.status || 'ACCEPTING'}</span>
-              </div>
-            </div>
-          `)
-          .addTo(map)
+        showShelterPopup(map, p, coords)
       })
     })
 
     map.on('error', (e) => {
-      console.warn('[MapPanel] error:', e?.error?.message ?? e)
+      console.warn('[MapPanel] notice:', e?.error?.message ?? e)
     })
 
     // Cleanup
     return () => {
       sourcesReady.current = false
+      markersRef.current.forEach((m) => m.remove())
+      markersRef.current = []
       mapRef.current = null
       map.remove()
     }
@@ -232,14 +220,13 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
       if (!sourcesReady.current) return
       const state = resolveCityState(activeScenario, currentKeyframeIndex, interventionApplied)
       applyStateToMap(map, state)
+      syncHTMLMarkers(map, state, markersRef)
     }
 
-    if (sourcesReady.current && map.isStyleLoaded()) {
+    if (sourcesReady.current) {
       doUpdate()
     } else {
-      // Wait for map to finish loading before updating
-      map.once('idle', doUpdate)
-      return () => map.off('idle', doUpdate)
+      map.once('load', doUpdate)
     }
   }, [activeScenario, currentKeyframeIndex, interventionApplied])
 
@@ -257,12 +244,12 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
       duration: 1800,
       essential: true,
     })
-  }, [activeScenario?.id]) // ← only fires on scenario ID change, not on keyframe updates
+  }, [activeScenario?.id])
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
-      className="relative flex-1 overflow-hidden bg-[#0d1117]"
+      className="relative flex-1 overflow-hidden bg-[#08090B]"
       role="region"
       aria-label="3D Digital Twin map — Central Delhi"
     >
@@ -297,7 +284,7 @@ function initLayers(map) {
       source: SRC.THREAT,
       paint: {
         'fill-color':   '#EF4444',
-        'fill-opacity': 0.09,
+        'fill-opacity': 0.16,
       },
     },
     // ── Threat zone border (dashed) ─────────────────────────────────────────
@@ -307,8 +294,8 @@ function initLayers(map) {
       source: SRC.THREAT,
       paint: {
         'line-color':       '#EF4444',
-        'line-width':       2,
-        'line-opacity':     0.55,
+        'line-width':       2.5,
+        'line-opacity':     0.85,
         'line-dasharray':   [4, 2],
       },
     },
@@ -320,8 +307,8 @@ function initLayers(map) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color':     '#3B82F6',
-        'line-width':     3.5,
-        'line-opacity':   0.80,
+        'line-width':     4.5,
+        'line-opacity':   0.90,
         'line-dasharray': [3, 2],
       },
     },
@@ -333,9 +320,8 @@ function initLayers(map) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color':     '#000000',
-        'line-width':     ['get', 'width'],
-        'line-opacity':   0.18,
-        'line-gap-width': 1,
+        'line-width':     ['+', ['get', 'width'], 3],
+        'line-opacity':   0.60,
       },
     },
     // ── Roads (data-driven colour + width) ──────────────────────────────────
@@ -359,7 +345,7 @@ function initLayers(map) {
         'fill-extrusion-color':   ['get', 'color'],
         'fill-extrusion-height':  ['get', 'height'],
         'fill-extrusion-base':    ['get', 'baseHeight'],
-        'fill-extrusion-opacity': 0.85,
+        'fill-extrusion-opacity': 0.92,
       },
     },
     // ── Shelters (circles) ─────────────────────────────────────────────────
@@ -370,10 +356,10 @@ function initLayers(map) {
       paint: {
         'circle-radius':         ['get', 'radius'],
         'circle-color':          ['get', 'color'],
-        'circle-opacity':        0.92,
-        'circle-stroke-width':   2.5,
-        'circle-stroke-color':   '#0d1117',
-        'circle-stroke-opacity': 0.85,
+        'circle-opacity':        0.95,
+        'circle-stroke-width':   3,
+        'circle-stroke-color':   '#08090B',
+        'circle-stroke-opacity': 0.95,
       },
     },
   ]
@@ -394,33 +380,215 @@ function applyStateToMap(map, cityState) {
   safeSetData(map, SRC.ROADS,     roadsToGeoJSON(roads))
   safeSetData(map, SRC.SHELTERS,  sheltersToGeoJSON(shelters))
   safeSetData(map, SRC.THREAT,    threatZoneToGeoJSON(threatZone))
-  safeSetData(map, SRC.EVAC,      evacRoutesToGeoJSON(evacuationRoutes ?? []))
+  safeSetData(map, SRC.EVAC,      evacRoutesToGeoJSON(evacuationRoutes))
 }
 
 function safeSetData(map, sourceId, data) {
   const src = map.getSource(sourceId)
-  if (src) src.setData(data)
-}
-
-// ── City state resolver ───────────────────────────────────────────────────────
-
-function resolveCityState(activeScenario, currentKeyframeIndex, interventionApplied) {
-  if (!activeScenario) return buildIdleState()
-
-  const raw = interventionApplied
-    ? mergeInterventionState(activeScenario.baseline, activeScenario.intervention)
-    : mergeKeyframeState(activeScenario.baseline, activeScenario.timeline, currentKeyframeIndex)
-
-  return {
-    buildings:       enrichWithDefs(raw.buildings ?? [],     BUILDING_DEFS),
-    roads:           enrichWithDefs(raw.roads ?? [],         ROAD_DEFS),
-    shelters:        enrichWithDefs(raw.shelters ?? [],      SHELTER_DEFS),
-    threatZone:      raw.threatZone ?? null,
-    evacuationRoutes: raw.evacuationRoutes ?? [],
+  if (src) {
+    src.setData(data)
   }
 }
 
-// ── Map UI overlays ───────────────────────────────────────────────────────────
+// ── HTML Landmark Badges (Floating on map) ─────────────────────────────────────
+
+function syncHTMLMarkers(map, cityState, markersRef) {
+  // Clear old markers
+  markersRef.current.forEach((m) => m.remove())
+  markersRef.current = []
+
+  const { buildings = [], shelters = [] } = cityState
+
+  // Add building landmark labels
+  buildings.forEach((b) => {
+    if (!Array.isArray(b.coordinates) || b.coordinates.length !== 2) return
+
+    const el = document.createElement('div')
+    el.className = 'group pointer-events-auto cursor-pointer select-none'
+
+    const riskColor =
+      b.riskLevel === 'critical' ? '#EF4444' :
+      b.riskLevel === 'high'     ? '#F97316' :
+      b.riskLevel === 'elevated' ? '#EAB308' : '#22C55E'
+
+    const icon =
+      b.type === 'hospital'   ? '🏥' :
+      b.type === 'government' ? '🏛️' :
+      b.type === 'landmark'   ? '📍' : '🏢'
+
+    el.innerHTML = `
+      <div style="
+        background: rgba(13, 17, 23, 0.94);
+        border: 1px solid ${riskColor}95;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.6), 0 0 12px ${riskColor}40;
+        border-radius: 4px;
+        padding: 3px 6px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-family: monospace;
+        font-size: 10px;
+        color: #E8EAF0;
+        transform: translateY(-8px);
+        transition: transform 0.15s ease;
+      ">
+        <span style="font-size: 11px;">${icon}</span>
+        <span style="font-weight: 700; white-space: nowrap;">${b.name}</span>
+        <span style="
+          font-size: 8px;
+          font-weight: bold;
+          text-transform: uppercase;
+          color: ${riskColor};
+          background: ${riskColor}25;
+          border: 1px solid ${riskColor}50;
+          padding: 1px 4px;
+          border-radius: 2px;
+        ">${b.status || b.riskLevel}</span>
+      </div>
+    `
+
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      showBuildingPopup(map, b, b.coordinates)
+    })
+
+    const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat(b.coordinates)
+      .addTo(map)
+
+    markersRef.current.push(marker)
+  })
+
+  // Add shelter markers
+  shelters.forEach((s) => {
+    if (!Array.isArray(s.coordinates) || s.coordinates.length !== 2) return
+
+    const el = document.createElement('div')
+    el.className = 'group pointer-events-auto cursor-pointer select-none'
+
+    const stateColor =
+      s.state === 'overloaded' ? '#EF4444' :
+      s.state === 'strained'   ? '#EAB308' : '#22C55E'
+
+    el.innerHTML = `
+      <div style="
+        background: rgba(15, 23, 42, 0.94);
+        border: 1px solid ${stateColor}95;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+        border-radius: 4px;
+        padding: 2px 5px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        font-family: monospace;
+        font-size: 9px;
+        color: #E8EAF0;
+        transform: translateY(12px);
+      ">
+        <span>⛺</span>
+        <span style="font-weight: 700;">${s.name.split(' ')[0]}</span>
+        <span style="color: ${stateColor}; font-weight: bold;">${s.utilizationPercent ?? 0}%</span>
+      </div>
+    `
+
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      showShelterPopup(map, s, s.coordinates)
+    })
+
+    const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
+      .setLngLat(s.coordinates)
+      .addTo(map)
+
+    markersRef.current.push(marker)
+  })
+}
+
+// ── Popups ───────────────────────────────────────────────────────────────────
+
+function showBuildingPopup(map, p, coords) {
+  const riskColor =
+    p.riskLevel === 'critical' ? '#EF4444' :
+    p.riskLevel === 'high'     ? '#F97316' :
+    p.riskLevel === 'elevated' ? '#EAB308' : '#22C55E'
+
+  new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
+    .setLngLat(coords)
+    .setHTML(`
+      <div style="min-width: 175px; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Building'}</strong>
+          <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${riskColor}; border: 1px solid ${riskColor}50; background: ${riskColor}15;">
+            ${p.riskLevel || 'LOW'}
+          </span>
+        </div>
+        <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
+          TYPE: <span style="color: #E8EAF0; text-transform: uppercase;">${p.type || 'LANDMARK'}</span>
+        </div>
+        <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
+          STATUS: <span style="color: #E8EAF0; font-weight: bold;">${p.status || 'OPERATIONAL'}</span>
+        </div>
+        ${p.population ? `<div style="font-size: 10px; color: #8B90A0;">POPULATION: <span style="color: #E8EAF0;">${Number(p.population).toLocaleString()}</span></div>` : ''}
+      </div>
+    `)
+    .addTo(map)
+}
+
+function showShelterPopup(map, p, coords) {
+  const stateColor =
+    p.state === 'overloaded' ? '#EF4444' :
+    p.state === 'strained'   ? '#EAB308' : '#22C55E'
+
+  new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
+    .setLngLat(coords)
+    .setHTML(`
+      <div style="min-width: 180px; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Emergency Shelter'}</strong>
+          <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${stateColor}; border: 1px solid ${stateColor}50; background: ${stateColor}15;">
+            ${p.state || 'AVAILABLE'}
+          </span>
+        </div>
+        <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
+          CAPACITY: <span style="color: #E8EAF0;">${Number(p.capacity || 0).toLocaleString()}</span>
+        </div>
+        ${p.occupancy ? `<div style="font-size: 10px; color: #8B90A0;">OCCUPANCY: <span style="color: #E8EAF0; font-weight: bold;">${Number(p.occupancy).toLocaleString()} (${p.utilizationPercent || 0}%)</span></div>` : ''}
+        <div style="font-size: 10px; color: #8B90A0; margin-top: 2px;">
+          STATUS: <span style="color: #E8EAF0;">${p.status || 'ACCEPTING'}</span>
+        </div>
+      </div>
+    `)
+    .addTo(map)
+}
+
+// ── State resolution ──────────────────────────────────────────────────────────
+
+function resolveCityState(activeScenario, currentKeyframeIndex, interventionApplied) {
+  if (!activeScenario) {
+    return buildIdleState()
+  }
+
+  let state
+  if (interventionApplied && activeScenario.intervention) {
+    state = mergeInterventionState(activeScenario.baseline, activeScenario.intervention)
+  } else {
+    state = mergeKeyframeState(
+      activeScenario.baseline,
+      activeScenario.timeline,
+      currentKeyframeIndex,
+    )
+  }
+
+  // Ensure dynamic state is enriched with static defs (coordinates, names, types)
+  return {
+    ...state,
+    buildings: enrichWithDefs(state.buildings, BUILDING_DEFS),
+    roads:     enrichWithDefs(state.roads,     ROAD_DEFS),
+    shelters:  enrichWithDefs(state.shelters,  SHELTER_DEFS),
+  }
+}
+
+// ── Map UI Overlays ───────────────────────────────────────────────────────────
 
 function MapOverlays({ activeScenario }) {
   return (
@@ -428,38 +596,38 @@ function MapOverlays({ activeScenario }) {
       {/* Active scenario badge */}
       {activeScenario && (
         <div
-          className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 bg-canvas/80 border border-hairline rounded-full backdrop-blur-sm animate-fade-in pointer-events-none z-10"
+          className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 bg-canvas/90 border border-hairline rounded-full backdrop-blur-sm animate-fade-in pointer-events-none z-10 shadow-lg"
           role="status"
           aria-live="polite"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-risk-red animate-pulse" aria-hidden="true" />
-          <span className="text-2xs font-mono text-ink uppercase tracking-widest">
+          <span className="text-2xs font-mono text-ink uppercase tracking-widest font-bold">
             {activeScenario.displayName}
           </span>
           <span className="w-px h-3 bg-hairline" aria-hidden="true" />
-          <span className="text-2xs font-mono text-risk-red">LIVE</span>
+          <span className="text-2xs font-mono text-risk-red font-bold">LIVE</span>
         </div>
       )}
 
       {/* Coordinates — top left */}
       <div
-        className="absolute top-3 left-3 text-2xs font-mono text-ink-faint opacity-50 pointer-events-none z-10"
+        className="absolute top-3 left-3 text-2xs font-mono text-ink-faint bg-canvas/70 border border-hairline px-2 py-1 rounded backdrop-blur-sm pointer-events-none z-10"
         aria-hidden="true"
       >
-        28.6200°N · 77.2200°E
+        28.6200°N · 77.2200°E · CENTRAL DELHI
       </div>
 
       {/* Map attribution / data credit — bottom right */}
       <div
-        className="absolute bottom-8 right-24 text-2xs font-mono text-ink-faint opacity-40 pointer-events-none z-10"
+        className="absolute bottom-8 right-24 text-2xs font-mono text-ink-faint opacity-50 pointer-events-none z-10"
         aria-hidden="true"
       >
-        Central Delhi · © OpenStreetMap
+        Central Delhi Digital Twin · OSM
       </div>
 
       {/* Risk level legend — bottom left */}
       <div
-        className="absolute bottom-8 left-3 flex items-center gap-3 px-3 py-2 bg-canvas/80 border border-hairline rounded backdrop-blur-sm pointer-events-none z-10"
+        className="absolute bottom-8 left-3 flex items-center gap-3 px-3 py-2 bg-canvas/90 border border-hairline rounded backdrop-blur-sm pointer-events-none z-10 shadow-md"
         aria-label="Map risk legend"
         role="img"
       >

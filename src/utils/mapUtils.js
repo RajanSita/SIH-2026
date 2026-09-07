@@ -13,21 +13,21 @@ import { riskLevelToHex, roadStatusToHex } from './scenarioUtils.js'
 
 /** Half-size of building polygon per building type (degrees ≈ metres at Delhi lat) */
 const TYPE_HALF_SIZE = {
-  landmark:    0.00070,
-  commercial:  0.00055,
-  government:  0.00065,
-  hospital:    0.00050,
-  cultural:    0.00045,
-  convention:  0.00075,
-  residential: 0.00035,
+  landmark:    0.00160,
+  commercial:  0.00140,
+  government:  0.00150,
+  hospital:    0.00130,
+  cultural:    0.00120,
+  convention:  0.00170,
+  residential: 0.00110,
 }
 
 /** Extrusion height multiplier per risk level — critical buildings tower above baseline */
 const RISK_HEIGHT_MULT = {
-  low:      0.55,
-  elevated: 1.00,
-  high:     1.55,
-  critical: 2.30,
+  low:      1.00,
+  elevated: 2.00,
+  high:     3.50,
+  critical: 5.50,
 }
 
 export const SHELTER_FILL_COLORS = {
@@ -61,10 +61,10 @@ export function buildingsToGeoJSON(buildings) {
         const hy    = halfSize * (0.70 + ((seed + 2) % 4) * 0.10)
 
         // Extrusion height
-        const base   = b.baseHeight          ?? 25
+        const base   = (b.baseHeight ?? 25) * 3.5
         const mult   = b.extrusionMultiplier ?? 1.0
         const rMult  = RISK_HEIGHT_MULT[b.riskLevel] ?? 1.0
-        const height = Math.max(Math.round(base * mult * rMult), 8)
+        const height = Math.max(Math.round(base * mult * rMult), 35)
 
         return {
           type: 'Feature',
@@ -97,7 +97,7 @@ export function buildingsToGeoJSON(buildings) {
 
 // ── Roads ─────────────────────────────────────────────────────────────────────
 
-const ROAD_WIDTH = { clear: 3, congested: 3, restricted: 4, blocked: 5 }
+const ROAD_WIDTH = { clear: 5, congested: 6, restricted: 7, blocked: 8 }
 const ROAD_OPACITY = { clear: 0.75, congested: 0.85, restricted: 0.90, blocked: 1.0 }
 
 /**
