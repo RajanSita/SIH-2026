@@ -41,7 +41,7 @@ An operator describes a threat in natural language. The system interprets it, pr
 | 2 | Scenario JSON datasets (4 scenarios) | ✅ Done |
 | 3 | MapLibre 3D map · Buildings · Roads · Shelters | ✅ Done |
 | 4 | Scenario input · Keyword matcher · AI delay | ✅ Done |
-| 5 | Timeline scrubber · Play/pause · Keyframes | ⬜ Pending |
+| 5 | Timeline scrubber · Play/pause · Keyframes | ✅ Done |
 | 6 | Causal breakdown panel | ⬜ Pending |
 | 7 | Intervention trigger · Comparison panel | ⬜ Pending |
 | 8 | Polish · Transitions · Responsive | ⬜ Pending |
