@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── MapLibre GL canvas sizing ────────────────────────────────────────────── */
+/* Ensures the MapLibre canvas always fills its parent container correctly */
+.maplibregl-map {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Keep MapLibre controls on top of our overlays */
+.maplibregl-ctrl-group {
+  background: #0F1117 !important;
+  border: 1px solid #1E2029 !important;
+}
+.maplibregl-ctrl-group button {
+  background-color: #0F1117 !important;
+  color: #8B90A0 !important;
+}
+.maplibregl-ctrl-group button:hover {
+  background-color: #161821 !important;
+  color: #E8EAF0 !important;
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(8, 9, 11, 0.7) !important;
+  color: #45495A !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a { color: #45495A !important; }
+
+
 /* ── Base resets ──────────────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;

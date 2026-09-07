@@ -39,7 +39,7 @@ An operator describes a threat in natural language. The system interprets it, pr
 |---|---|---|
 | 1 | Scaffold · Layout shell · Design system | ✅ Done |
 | 2 | Scenario JSON datasets (4 scenarios) | ✅ Done |
-| 3 | MapLibre 3D map · Buildings · Roads · Shelters | ⬜ Pending |
+| 3 | MapLibre 3D map · Buildings · Roads · Shelters | ✅ Done |
 | 4 | Scenario input · Keyword matcher · AI delay | ⬜ Pending |
 | 5 | Timeline scrubber · Play/pause · Keyframes | ⬜ Pending |
 | 6 | Causal breakdown panel | ⬜ Pending |
