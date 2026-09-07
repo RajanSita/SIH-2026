@@ -1,85 +1,106 @@
 /**
  * RightRail — The 35%-width analytics sidebar.
- * Contains:
- *   1. QuickStats   — live numeric overview
- *   2. CausalPanel  — vulnerability breakdown (Task 6)
- *   3. ScenarioChat — natural-language input (Task 4)
  *
- * Task 1: Renders structural shell with labelled placeholder sections.
+ * Layout (Task 4 update):
+ *   ┌─────────────────┐  ← QuickStats     — live 6-stat grid (Task 4)
+ *   │ SITUATION OVRVW │
+ *   ├─────────────────┤
+ *   │ CAUSAL BRKDWN  │  ← placeholder (Task 6)
+ *   │                 │
+ *   │ INTERVENTION    │  ← placeholder (Task 7)
+ *   ├─────────────────┤
+ *   │ SCENARIO INPUT  │  ← ScenarioChat  — live NL input (Task 4)
+ *   └─────────────────┘
  */
 
-export default function RightRail({ activeScenario }) {
+import QuickStats    from './QuickStats.jsx'
+import ScenarioChat  from './ScenarioChat.jsx'
+
+export default function RightRail({
+  activeScenario,
+  currentKeyframeIndex,
+  interventionApplied,
+  onInterventionApply,
+  onInterventionReset,
+  onScenarioActivate,
+}) {
   return (
     <aside
-      className="flex flex-col w-[35%] min-w-[280px] max-w-[420px] border-l border-hairline bg-canvas shrink-0 overflow-hidden"
+      className="flex flex-col w-[35%] min-w-[300px] max-w-[440px] border-l border-hairline bg-canvas shrink-0 overflow-hidden"
       role="complementary"
       aria-label="Analytics and scenario control panel"
     >
-      {/* ── 1. Quick Stats ─────────────────────────────────────────────── */}
-      <section className="border-b border-hairline" aria-label="Quick statistics">
-        <SectionHeader label="SITUATION OVERVIEW" />
-        <div className="px-4 pb-4 grid grid-cols-2 gap-3">
-          <StatCard label="THREAT LEVEL"    value={activeScenario ? activeScenario.severity : '—'} variant={activeScenario ? 'critical' : 'dim'} />
-          <StatCard label="EXPOSURE"        value={activeScenario ? 'HIGH' : '—'}                 variant={activeScenario ? 'high'     : 'dim'} />
-          <StatCard label="SHELTER STATUS"  value={activeScenario ? '82%'  : '—'}                 variant={activeScenario ? 'elevated' : 'dim'} />
-          <StatCard label="ROAD NETWORK"    value={activeScenario ? 'DEGRADED' : '—'}             variant={activeScenario ? 'high'     : 'dim'} />
-        </div>
-      </section>
+      {/* ── 1. Situation overview stats ──────────────────────────────────── */}
+      <QuickStats
+        activeScenario={activeScenario}
+        currentKeyframeIndex={currentKeyframeIndex}
+        interventionApplied={interventionApplied}
+      />
 
-      {/* ── 2. Causal Breakdown placeholder ───────────────────────────── */}
-      <section className="border-b border-hairline flex-1 overflow-y-auto" aria-label="Causal breakdown">
-        <SectionHeader label="CAUSAL BREAKDOWN" tag="Task 6" />
-        <PlaceholderBlock
-          icon="⬡"
-          title="Vulnerability Analysis"
-          subtitle="Causal factor bars — implemented in Task 6"
-        />
+      {/* ── 2. Causal breakdown + Intervention comparison (Tasks 6 & 7) ── */}
+      <div className="flex-1 overflow-y-auto min-h-0">
 
-        {/* ── Comparison placeholder ───────────────────────────────── */}
+        {/* Causal breakdown — Task 6 placeholder */}
+        <section aria-label="Causal breakdown">
+          <SectionHeader label="CAUSAL BREAKDOWN" tag="Task 6" />
+          <PlaceholderBlock
+            icon="⬡"
+            title="Vulnerability Analysis"
+            subtitle="4-factor bar chart with primary driver detection — implemented in Task 6"
+          />
+        </section>
+
         <div className="section-divider" />
-        <SectionHeader label="INTERVENTION IMPACT" tag="Task 7" />
-        <PlaceholderBlock
-          icon="⇄"
-          title="Before / After Comparison"
-          subtitle="Evacuation · Shelter · Risk zones — Task 7"
-        />
-      </section>
 
-      {/* ── 3. Scenario Chat input ─────────────────────────────────────── */}
-      <section className="border-t border-hairline shrink-0" aria-label="Scenario input">
-        <SectionHeader label="SCENARIO INPUT" tag="Task 4" />
-        <div className="px-4 pb-4">
-          {/* Preset chips */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {['HOSTILE ATTACK', 'EARTHQUAKE', 'FLOOD'].map((chip) => (
+        {/* Intervention impact — Task 7 placeholder */}
+        <section aria-label="Intervention impact comparison">
+          <SectionHeader label="INTERVENTION IMPACT" tag="Task 7" />
+          {activeScenario && !interventionApplied && (
+            <div className="px-4 pb-3">
               <button
-                key={chip}
-                aria-label={`Load ${chip} scenario`}
-                className="text-2xs font-mono text-ink-dim border border-hairline rounded px-2 py-1 hover:border-accent/50 hover:text-accent transition-colors duration-150"
+                id="btn-apply-intervention"
+                onClick={onInterventionApply}
+                aria-label={`Apply intervention: ${activeScenario.intervention?.actionLabel}`}
+                className="w-full text-2xs font-mono text-accent border border-accent/30 rounded px-3 py-2.5 hover:bg-accent/10 transition-colors duration-150 text-left"
               >
-                {chip}
+                <span className="text-ink-faint mr-2" aria-hidden="true">▶</span>
+                {activeScenario.intervention?.actionLabel ?? 'APPLY INTERVENTION'}
+                {activeScenario.intervention?.actionDetail && (
+                  <span className="block text-2xs text-ink-faint mt-0.5 pl-4">
+                    {activeScenario.intervention.actionDetail}
+                  </span>
+                )}
               </button>
-            ))}
-          </div>
+            </div>
+          )}
+          {activeScenario && interventionApplied && (
+            <div className="px-4 pb-3 flex items-center justify-between">
+              <span className="text-2xs font-mono text-risk-green">
+                ✓ INTERVENTION APPLIED
+              </span>
+              <button
+                id="btn-reset-intervention"
+                onClick={onInterventionReset}
+                aria-label="Reset intervention"
+                className="text-2xs font-mono text-ink-faint hover:text-ink border border-hairline rounded px-2 py-1 transition-colors duration-150"
+              >
+                RESET
+              </button>
+            </div>
+          )}
+          <PlaceholderBlock
+            icon="⇄"
+            title="Before / After Comparison"
+            subtitle="Evacuation time · Shelter load · Risk zones — Task 7"
+          />
+        </section>
+      </div>
 
-          {/* Input field */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Describe a scenario in natural language…"
-              aria-label="Scenario description input"
-              className="w-full bg-surface border border-hairline rounded px-3 py-2.5 text-xs text-ink placeholder:text-ink-faint font-mono focus:outline-none focus:border-accent/50 transition-colors duration-150 pr-16"
-              disabled
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-2xs text-ink-faint font-mono pointer-events-none">
-              ENTER
-            </span>
-          </div>
-          <p className="text-2xs text-ink-faint mt-1.5">
-            Full interaction implemented in Task 4
-          </p>
-        </div>
-      </section>
+      {/* ── 3. Scenario Chat ──────────────────────────────────────────────── */}
+      <ScenarioChat
+        activeScenario={activeScenario}
+        onScenarioActivate={onScenarioActivate}
+      />
     </aside>
   )
 }
@@ -99,26 +120,10 @@ function SectionHeader({ label, tag }) {
   )
 }
 
-function StatCard({ label, value, variant }) {
-  const valueColor = {
-    critical: 'text-risk-red',
-    high:     'text-risk-orange',
-    elevated: 'text-risk-yellow',
-    dim:      'text-ink-faint',
-  }[variant] || 'text-ink'
-
-  return (
-    <div className="bg-surface border border-hairline rounded p-3">
-      <p className="panel-label mb-1">{label}</p>
-      <p className={`text-sm font-bold font-mono ${valueColor}`}>{value}</p>
-    </div>
-  )
-}
-
 function PlaceholderBlock({ icon, title, subtitle }) {
   return (
-    <div className="mx-4 mb-4 flex flex-col items-center justify-center gap-2 py-6 border border-dashed border-hairline rounded opacity-40">
-      <span className="text-2xl text-ink-faint">{icon}</span>
+    <div className="mx-4 mb-4 flex flex-col items-center justify-center gap-2 py-6 border border-dashed border-hairline rounded opacity-35">
+      <span className="text-2xl text-ink-faint" aria-hidden="true">{icon}</span>
       <p className="text-xs font-semibold text-ink-dim">{title}</p>
       <p className="text-2xs text-ink-faint text-center px-4">{subtitle}</p>
     </div>
