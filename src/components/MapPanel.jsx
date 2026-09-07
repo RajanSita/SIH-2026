@@ -148,6 +148,7 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
     })
 
     mapRef.current = map
+    window.__map = map
     sourcesReady.current = false
 
     // Navigation control (zoom + compass)
