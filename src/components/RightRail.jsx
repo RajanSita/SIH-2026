@@ -13,9 +13,10 @@
  *   └─────────────────┘
  */
 
-import QuickStats      from './QuickStats.jsx'
-import ScenarioChat    from './ScenarioChat.jsx'
-import CausalBreakdown from './CausalBreakdown.jsx'
+import QuickStats        from './QuickStats.jsx'
+import ScenarioChat      from './ScenarioChat.jsx'
+import CausalBreakdown   from './CausalBreakdown.jsx'
+import InterventionPanel from './InterventionPanel.jsx'
 
 export default function RightRail({
   activeScenario,
@@ -47,50 +48,13 @@ export default function RightRail({
           currentKeyframeIndex={currentKeyframeIndex}
         />
 
-        <div className="section-divider" />
-
-        {/* Intervention impact — Task 7 placeholder */}
-        <section aria-label="Intervention impact comparison">
-          <SectionHeader label="INTERVENTION IMPACT" tag="Task 7" />
-          {activeScenario && !interventionApplied && (
-            <div className="px-4 pb-3">
-              <button
-                id="btn-apply-intervention"
-                onClick={onInterventionApply}
-                aria-label={`Apply intervention: ${activeScenario.intervention?.actionLabel}`}
-                className="w-full text-2xs font-mono text-accent border border-accent/30 rounded px-3 py-2.5 hover:bg-accent/10 transition-colors duration-150 text-left"
-              >
-                <span className="text-ink-faint mr-2" aria-hidden="true">▶</span>
-                {activeScenario.intervention?.actionLabel ?? 'APPLY INTERVENTION'}
-                {activeScenario.intervention?.actionDetail && (
-                  <span className="block text-2xs text-ink-faint mt-0.5 pl-4">
-                    {activeScenario.intervention.actionDetail}
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-          {activeScenario && interventionApplied && (
-            <div className="px-4 pb-3 flex items-center justify-between">
-              <span className="text-2xs font-mono text-risk-green">
-                ✓ INTERVENTION APPLIED
-              </span>
-              <button
-                id="btn-reset-intervention"
-                onClick={onInterventionReset}
-                aria-label="Reset intervention"
-                className="text-2xs font-mono text-ink-faint hover:text-ink border border-hairline rounded px-2 py-1 transition-colors duration-150"
-              >
-                RESET
-              </button>
-            </div>
-          )}
-          <PlaceholderBlock
-            icon="⇄"
-            title="Before / After Comparison"
-            subtitle="Evacuation time · Shelter load · Risk zones — Task 7"
-          />
-        </section>
+        {/* Intervention impact — Task 7 */}
+        <InterventionPanel
+          activeScenario={activeScenario}
+          interventionApplied={interventionApplied}
+          onInterventionApply={onInterventionApply}
+          onInterventionReset={onInterventionReset}
+        />
       </div>
 
       {/* ── 3. Scenario Chat ──────────────────────────────────────────────── */}
@@ -102,27 +66,3 @@ export default function RightRail({
   )
 }
 
-/* ── Sub-components ───────────────────────────────────────────────────────── */
-
-function SectionHeader({ label, tag }) {
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5">
-      <span className="panel-label">{label}</span>
-      {tag && (
-        <span className="text-2xs font-mono text-ink-faint border border-hairline rounded px-1.5 py-0.5 opacity-50">
-          {tag}
-        </span>
-      )}
-    </div>
-  )
-}
-
-function PlaceholderBlock({ icon, title, subtitle }) {
-  return (
-    <div className="mx-4 mb-4 flex flex-col items-center justify-center gap-2 py-6 border border-dashed border-hairline rounded opacity-35">
-      <span className="text-2xl text-ink-faint" aria-hidden="true">{icon}</span>
-      <p className="text-xs font-semibold text-ink-dim">{title}</p>
-      <p className="text-2xs text-ink-faint text-center px-4">{subtitle}</p>
-    </div>
-  )
-}
