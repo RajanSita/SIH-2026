@@ -78,47 +78,53 @@ const DEFAULT_VIEW = {
 // ── Source and layer ID registry ──────────────────────────────────────────────
 
 const SRC = Object.freeze({
-  THREAT:     'sih-threat',
-  EVAC:       'sih-evac',
-  ROADS:      'sih-roads',
-  BUILDINGS:  'sih-buildings',
-  SHELTERS:   'sih-shelters',
+  THREAT:    'sih-threat',
+  EVAC:      'sih-evac',
+  ROADS:     'sih-roads',
+  BUILDINGS: 'sih-buildings',
 })
 
 const LYR = Object.freeze({
-  THREAT_FILL:        'sih-lyr-threat-fill',
-  THREAT_BORDER:      'sih-lyr-threat-border',
-  EVAC:               'sih-lyr-evac',
-  ROADS_CASING:       'sih-lyr-roads-casing',
-  ROADS:              'sih-lyr-roads',
-  BUILDINGS_EXTRUSION:'sih-lyr-buildings-extrusion',
-  SHELTERS_CIRCLE:    'sih-lyr-shelters',
+  THREAT_FILL:         'sih-lyr-threat-fill',
+  THREAT_BORDER:       'sih-lyr-threat-border',
+  EVAC_CASING:         'sih-lyr-evac-casing',
+  EVAC:                'sih-lyr-evac',
+  ROADS_CASING:        'sih-lyr-roads-casing',
+  ROADS:               'sih-lyr-roads',
+  BUILDINGS_EXTRUSION: 'sih-lyr-buildings-extrusion',
 })
 
 // ── Idle city state (shown when no scenario is active) ────────────────────────
 
 function buildIdleState() {
   return {
-    buildings: BUILDING_DEFS.map((d) => ({
-      ...d,
-      riskLevel: 'low',
-      status: 'MONITORING',
-      extrusionMultiplier: 0.8,
-    })),
+    buildings: [
+      ...BUILDING_DEFS.map((d) => ({
+        ...d,
+        riskLevel: 'low',
+        status: 'MONITORING',
+        extrusionMultiplier: 0.8,
+      })),
+      // Shelters rendered as buildings (green, low profile)
+      ...SHELTER_DEFS
+        .filter((d) => !d.interventionOnly)
+        .map((d) => ({
+          ...d,
+          riskLevel: 'low',
+          status: 'STANDBY',
+          extrusionMultiplier: 1.0,
+          occupancy: Math.floor(d.capacity * 0.18),
+          utilizationPercent: 18,
+          state: 'available',
+          isShelter: true,
+        })),
+    ],
     roads: ROAD_DEFS.map((d) => ({
       ...d,
       status: 'clear',
       label: 'CLEAR',
     })),
-    shelters: SHELTER_DEFS
-      .filter((d) => !d.interventionOnly)
-      .map((d) => ({
-        ...d,
-        occupancy: Math.floor(d.capacity * 0.18),
-        utilizationPercent: 18,
-        state: 'available',
-        status: 'STANDBY',
-      })),
+    shelters: [], // kept for popup data only, not rendered as circles
     threatZone: null,
     evacuationRoutes: [],
   }
@@ -170,7 +176,7 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
       syncHTMLMarkers(map, initialState, markersRef)
 
       // ── Cursor pointer for interactive 3D layers ─────────────────────────
-      const interactiveLayers = [LYR.BUILDINGS_EXTRUSION, LYR.SHELTERS_CIRCLE]
+      const interactiveLayers = [LYR.BUILDINGS_EXTRUSION]
       interactiveLayers.forEach((lyrId) => {
         map.on('mouseenter', lyrId, () => {
           map.getCanvas().style.cursor = 'pointer'
@@ -180,20 +186,16 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
         })
       })
 
-      // ── Building click popup ─────────────────────────────────────────────
+      // ── Building / shelter click popup ──────────────────────────────────
       map.on('click', LYR.BUILDINGS_EXTRUSION, (e) => {
         if (!e.features?.length) return
         const p = e.features[0].properties || {}
         const coords = e.lngLat
-        showBuildingPopup(map, p, coords)
-      })
-
-      // ── Shelter click popup ──────────────────────────────────────────────
-      map.on('click', LYR.SHELTERS_CIRCLE, (e) => {
-        if (!e.features?.length) return
-        const p = e.features[0].properties || {}
-        const coords = e.lngLat
-        showShelterPopup(map, p, coords)
+        if (p.isShelter) {
+          showShelterPopup(map, p, coords)
+        } else {
+          showBuildingPopup(map, p, coords)
+        }
       })
     })
 
@@ -266,7 +268,7 @@ export default function MapPanel({ activeScenario, currentKeyframeIndex, interve
 // ── Source initialisation ─────────────────────────────────────────────────────
 
 function initSources(map) {
-  const order = [SRC.THREAT, SRC.EVAC, SRC.ROADS, SRC.BUILDINGS, SRC.SHELTERS]
+  const order = [SRC.THREAT, SRC.EVAC, SRC.ROADS, SRC.BUILDINGS]
   order.forEach((id) => {
     if (!map.getSource(id)) {
       map.addSource(id, { type: 'geojson', data: EMPTY_FC })
@@ -300,17 +302,28 @@ function initLayers(map) {
         'line-dasharray':   [4, 2],
       },
     },
-    // ── Evacuation routes ──────────────────────────────────────────────────
+    // ── Evac route dark casing for contrast ──────────────────────────────────
+    {
+      id:     LYR.EVAC_CASING,
+      type:   'line',
+      source: SRC.EVAC,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color':   '#000000',
+        'line-width':   ['+', ['get', 'width'], 3],
+        'line-opacity': 0.50,
+      },
+    },
+    // ── Evacuation routes — data-driven colour, width, opacity ───────────────
     {
       id:     LYR.EVAC,
       type:   'line',
       source: SRC.EVAC,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color':     '#3B82F6',
-        'line-width':     4.5,
-        'line-opacity':   0.90,
-        'line-dasharray': [3, 2],
+        'line-color':   ['get', 'color'],
+        'line-width':   ['get', 'width'],
+        'line-opacity': ['get', 'opacity'],
       },
     },
     // ── Road casing (dark outline for contrast) ─────────────────────────────
@@ -337,7 +350,7 @@ function initLayers(map) {
         'line-opacity': ['get', 'opacity'],
       },
     },
-    // ── Buildings (3D extrusion) ────────────────────────────────────────────
+    // ── Buildings + Shelters (shared 3D extrusion layer) ────────────────────
     {
       id:     LYR.BUILDINGS_EXTRUSION,
       type:   'fill-extrusion',
@@ -347,20 +360,6 @@ function initLayers(map) {
         'fill-extrusion-height':  ['get', 'height'],
         'fill-extrusion-base':    ['get', 'baseHeight'],
         'fill-extrusion-opacity': 0.92,
-      },
-    },
-    // ── Shelters (circles) ─────────────────────────────────────────────────
-    {
-      id:     LYR.SHELTERS_CIRCLE,
-      type:   'circle',
-      source: SRC.SHELTERS,
-      paint: {
-        'circle-radius':         ['get', 'radius'],
-        'circle-color':          ['get', 'color'],
-        'circle-opacity':        0.95,
-        'circle-stroke-width':   3,
-        'circle-stroke-color':   '#08090B',
-        'circle-stroke-opacity': 0.95,
       },
     },
   ]
@@ -377,9 +376,14 @@ function initLayers(map) {
 function applyStateToMap(map, cityState) {
   const { buildings, roads, shelters, threatZone, evacuationRoutes } = cityState
 
-  safeSetData(map, SRC.BUILDINGS, buildingsToGeoJSON(buildings))
+  // Merge shelter buildings into the same source as landmark buildings
+  const enrichedShelters = Array.isArray(shelters)
+    ? shelters.map((s) => ({ ...s, isShelter: true }))
+    : []
+  const allBuildings = [...(buildings ?? []), ...enrichedShelters]
+
+  safeSetData(map, SRC.BUILDINGS, buildingsToGeoJSON(allBuildings))
   safeSetData(map, SRC.ROADS,     roadsToGeoJSON(roads))
-  safeSetData(map, SRC.SHELTERS,  sheltersToGeoJSON(shelters))
   safeSetData(map, SRC.THREAT,    threatZoneToGeoJSON(threatZone))
   safeSetData(map, SRC.EVAC,      evacRoutesToGeoJSON(evacuationRoutes))
 }
@@ -540,23 +544,32 @@ function showShelterPopup(map, p, coords) {
     p.state === 'overloaded' ? '#EF4444' :
     p.state === 'strained'   ? '#EAB308' : '#22C55E'
 
+  const triageIcon  = p.triageReady ? '🏥 TRIAGE READY' : ''
+  const helipadIcon = p.helipad ? '🚁 HELIPAD' : ''
+
   new maplibregl.Popup({ closeButton: true, offset: [0, -10] })
     .setLngLat(coords)
     .setHTML(`
-      <div style="min-width: 180px; font-family: monospace;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-          <strong style="font-size: 11px; color: #E8EAF0;">${p.name || 'Emergency Shelter'}</strong>
+      <div style="min-width: 200px; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <strong style="font-size: 11px; color: #E8EAF0;">⛺ ${p.name || 'Emergency Shelter'}</strong>
           <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; color: ${stateColor}; border: 1px solid ${stateColor}50; background: ${stateColor}15;">
-            ${p.state || 'AVAILABLE'}
+            ${(p.state || 'AVAILABLE').toUpperCase()}
           </span>
         </div>
+        ${p.zone ? `<div style="font-size: 9px; color: #6B7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">📍 ${p.zone}</div>` : ''}
         <div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">
           CAPACITY: <span style="color: #E8EAF0;">${Number(p.capacity || 0).toLocaleString()}</span>
         </div>
-        ${p.occupancy ? `<div style="font-size: 10px; color: #8B90A0;">OCCUPANCY: <span style="color: #E8EAF0; font-weight: bold;">${Number(p.occupancy).toLocaleString()} (${p.utilizationPercent || 0}%)</span></div>` : ''}
-        <div style="font-size: 10px; color: #8B90A0; margin-top: 2px;">
+        ${p.occupancy ? `<div style="font-size: 10px; color: #8B90A0; margin-bottom: 2px;">OCCUPANCY: <span style="color: ${stateColor}; font-weight: bold;">${Number(p.occupancy).toLocaleString()} (${p.utilizationPercent || 0}%)</span></div>` : ''}
+        <div style="font-size: 10px; color: #8B90A0; margin-bottom: 4px;">
           STATUS: <span style="color: #E8EAF0;">${p.status || 'ACCEPTING'}</span>
         </div>
+        ${(triageIcon || helipadIcon) ? `
+        <div style="display: flex; gap: 8px; margin-top: 4px; border-top: 1px solid #1F2937; padding-top: 4px;">
+          ${triageIcon ? `<span style="font-size: 9px; color: #22C55E;">${triageIcon}</span>` : ''}
+          ${helipadIcon ? `<span style="font-size: 9px; color: #06B6D4;">${helipadIcon}</span>` : ''}
+        </div>` : ''}
       </div>
     `)
     .addTo(map)
@@ -580,12 +593,18 @@ function resolveCityState(activeScenario, currentKeyframeIndex, interventionAppl
     )
   }
 
-  // Ensure dynamic state is enriched with static defs (coordinates, names, types)
+  // Enrich shelter defs and merge into buildings list for 3D extrusion rendering
+  const enrichedShelterDefs = enrichWithDefs(state.shelters ?? [], SHELTER_DEFS)
+  const enrichedShelters = enrichedShelterDefs.map((s) => ({ ...s, isShelter: true }))
+
   return {
     ...state,
-    buildings: enrichWithDefs(state.buildings, BUILDING_DEFS),
-    roads:     enrichWithDefs(state.roads,     ROAD_DEFS),
-    shelters:  enrichWithDefs(state.shelters,  SHELTER_DEFS),
+    buildings: [
+      ...enrichWithDefs(state.buildings, BUILDING_DEFS),
+      ...enrichedShelters,
+    ],
+    roads:    enrichWithDefs(state.roads, ROAD_DEFS),
+    shelters: enrichedShelterDefs, // still kept for popup click data
   }
 }
 
@@ -628,8 +647,8 @@ function MapOverlays({ activeScenario }) {
 
       {/* Risk level legend — bottom left */}
       <div
-        className="absolute bottom-8 left-3 flex items-center gap-3 px-3 py-2 bg-canvas/90 border border-hairline rounded backdrop-blur-sm pointer-events-none z-10 shadow-md"
-        aria-label="Map risk legend"
+        className="absolute bottom-8 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 bg-canvas/90 border border-hairline rounded backdrop-blur-sm pointer-events-none z-10 shadow-md max-w-[360px]"
+        aria-label="Map legend"
         role="img"
       >
         {[
@@ -646,19 +665,29 @@ function MapOverlays({ activeScenario }) {
 
         <span className="w-px h-3 bg-hairline" aria-hidden="true" />
 
-        {/* Evac route legend swatch */}
-        <div className="flex items-center gap-1.5">
-          <svg width="14" height="6" aria-hidden="true">
-            <line x1="0" y1="3" x2="14" y2="3" stroke="#3B82F6" strokeWidth="2.5" strokeDasharray="4 2" />
-          </svg>
-          <span className="text-2xs font-mono text-ink-faint">EVAC ROUTE</span>
-        </div>
-
         {/* Shelter legend swatch */}
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-risk-green opacity-90" aria-hidden="true" />
+          <span className="w-2.5 h-2.5 rounded-sm bg-risk-green opacity-90" aria-hidden="true" />
           <span className="text-2xs font-mono text-ink-faint">SHELTER</span>
         </div>
+
+        <span className="w-px h-3 bg-hairline" aria-hidden="true" />
+
+        {/* Evacuation route legend — 4 statuses */}
+        {[
+          { color: '#22C55E', label: 'PRIMARY' },
+          { color: '#06B6D4', label: 'ALT' },
+          { color: '#EAB308', label: 'CONGESTED' },
+          { color: '#EF4444', label: 'BLOCKED' },
+        ].map(({ color, label }) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <svg width="14" height="6" aria-hidden="true">
+              <line x1="0" y1="3" x2="14" y2="3" stroke={color} strokeWidth="2.5"
+                strokeDasharray={label === 'ALT' ? '4 2' : label === 'CONGESTED' ? '3 2 1 2' : label === 'BLOCKED' ? '2 2' : undefined} />
+            </svg>
+            <span className="text-2xs font-mono text-ink-faint">{label}</span>
+          </div>
+        ))}
       </div>
     </>
   )

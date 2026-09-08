@@ -24,20 +24,40 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * BUILDINGS — 10 key landmarks / zones in Central Delhi
+ * BUILDINGS — 25 landmarks / strategic zones across Delhi NCR
  * Each scenario overrides riskLevel, status, extrusionMultiplier
  */
 const BUILDING_DEFS = [
-  { id: 'B001', name: 'India Gate',            type: 'landmark',    coordinates: [77.2295, 28.6129], baseHeight: 42 },
-  { id: 'B002', name: 'Connaught Place Hub',   type: 'commercial',  coordinates: [77.2167, 28.6315], baseHeight: 28 },
-  { id: 'B003', name: 'Parliament Complex',    type: 'government',  coordinates: [77.2081, 28.6178], baseHeight: 35 },
-  { id: 'B004', name: 'RML Hospital',          type: 'hospital',    coordinates: [77.2026, 28.6245], baseHeight: 30 },
-  { id: 'B005', name: 'Mandi House',           type: 'cultural',    coordinates: [77.2380, 28.6250], baseHeight: 22 },
-  { id: 'B006', name: 'ITO Complex',           type: 'government',  coordinates: [77.2498, 28.6290], baseHeight: 38 },
-  { id: 'B007', name: 'Barakhamba Office Blk', type: 'commercial',  coordinates: [77.2270, 28.6285], baseHeight: 45 },
-  { id: 'B008', name: 'Pragati Maidan Conv.',  type: 'convention',  coordinates: [77.2553, 28.6187], baseHeight: 25 },
-  { id: 'B009', name: 'Khan Market Area',      type: 'commercial',  coordinates: [77.2310, 28.5999], baseHeight: 20 },
-  { id: 'B010', name: 'Lodhi Colony Zone',     type: 'residential', coordinates: [77.2290, 28.5909], baseHeight: 18 },
+  // ── Central Vista / Core ──────────────────────────────────────────────────
+  { id: 'B001', name: 'India Gate',                  type: 'landmark',    coordinates: [77.2295, 28.6129], baseHeight: 42 },
+  { id: 'B002', name: 'Connaught Place Hub',          type: 'commercial',  coordinates: [77.2167, 28.6315], baseHeight: 28 },
+  { id: 'B003', name: 'Parliament Complex',           type: 'government',  coordinates: [77.2081, 28.6178], baseHeight: 35 },
+  { id: 'B004', name: 'RML Hospital',                 type: 'hospital',    coordinates: [77.2026, 28.6245], baseHeight: 30 },
+  { id: 'B005', name: 'Mandi House',                  type: 'cultural',    coordinates: [77.2380, 28.6250], baseHeight: 22 },
+  { id: 'B006', name: 'ITO Complex',                  type: 'government',  coordinates: [77.2498, 28.6290], baseHeight: 38 },
+  { id: 'B007', name: 'Barakhamba Office Block',       type: 'commercial',  coordinates: [77.2270, 28.6285], baseHeight: 45 },
+  { id: 'B008', name: 'Pragati Maidan/Bharat Mandapam',type: 'convention',  coordinates: [77.2553, 28.6187], baseHeight: 25 },
+  { id: 'B009', name: 'Khan Market Area',              type: 'commercial',  coordinates: [77.2310, 28.5999], baseHeight: 20 },
+  { id: 'B010', name: 'Lodhi Colony Zone',             type: 'residential', coordinates: [77.2290, 28.5909], baseHeight: 18 },
+  // ── North Delhi ───────────────────────────────────────────────────────────
+  { id: 'B011', name: 'Red Fort (Lal Qila)',           type: 'landmark',    coordinates: [77.2410, 28.6562], baseHeight: 38 },
+  { id: 'B012', name: 'Kashmere Gate Transit Hub',     type: 'transit',     coordinates: [77.2275, 28.6668], baseHeight: 20 },
+  { id: 'B013', name: 'Delhi University North Campus', type: 'educational', coordinates: [77.2074, 28.6878], baseHeight: 24 },
+  { id: 'B014', name: 'Civil Lines Admin Zone',        type: 'government',  coordinates: [77.2231, 28.6810], baseHeight: 22 },
+  // ── South Delhi ──────────────────────────────────────────────────────────
+  { id: 'B015', name: 'AIIMS Medical Complex',         type: 'hospital',    coordinates: [77.2100, 28.5672], baseHeight: 48 },
+  { id: 'B016', name: 'Safdarjung Hospital',           type: 'hospital',    coordinates: [77.2040, 28.5740], baseHeight: 36 },
+  { id: 'B017', name: 'Nehru Place Tech Towers',       type: 'commercial',  coordinates: [77.2508, 28.5487], baseHeight: 55 },
+  { id: 'B018', name: 'Saket District Centre',         type: 'commercial',  coordinates: [77.2142, 28.5244], baseHeight: 40 },
+  { id: 'B019', name: 'Lajpat Nagar Market',           type: 'commercial',  coordinates: [77.2443, 28.5685], baseHeight: 18 },
+  // ── East Delhi ────────────────────────────────────────────────────────────
+  { id: 'B020', name: 'Akshardham Temple Complex',     type: 'landmark',    coordinates: [77.2767, 28.6127], baseHeight: 45 },
+  { id: 'B021', name: 'IP Estate Media Hub',           type: 'commercial',  coordinates: [77.2533, 28.6358], baseHeight: 30 },
+  { id: 'B022', name: 'Yamuna Sports Village',         type: 'convention',  coordinates: [77.2590, 28.6460], baseHeight: 22 },
+  // ── West Delhi / Diplomatic ───────────────────────────────────────────────
+  { id: 'B023', name: 'Rashtrapati Bhavan',            type: 'government',  coordinates: [77.1993, 28.6145], baseHeight: 44 },
+  { id: 'B024', name: 'Chanakyapuri Diplomatic Zone',  type: 'government',  coordinates: [77.1860, 28.5980], baseHeight: 20 },
+  { id: 'B025', name: 'Dilli Haat INA',                type: 'cultural',    coordinates: [77.2061, 28.5769], baseHeight: 16 },
 ]
 
 /**
@@ -194,8 +214,21 @@ const SCENARIO_SECURITY = {
       type: 'hostile-attack',
     },
     evacuationRoutes: [
-      { id: 'EV001', path: [[77.2295, 28.6129], [77.2200, 28.5980], [77.2193, 28.5520]], status: 'active', direction: 'SOUTH' },
-      { id: 'EV002', path: [[77.2167, 28.6315], [77.2081, 28.6245], [77.1993, 28.6282]], status: 'active', direction: 'WEST' },
+      // Primary: Kartavya Path → South (open, signal-priority)
+      { id: 'EV001', status: 'primary',   direction: 'SOUTH',
+        path: [[77.2295, 28.6129], [77.2290, 28.5999], [77.2193, 28.5520]] },
+      // Primary: Janpath → Talkatora (open)
+      { id: 'EV002', status: 'primary',   direction: 'WEST',
+        path: [[77.2167, 28.6315], [77.2081, 28.6245], [77.1993, 28.6282]] },
+      // Secondary: Mandi House → ITO (alt corridor)
+      { id: 'EV003', status: 'secondary', direction: 'EAST',
+        path: [[77.2380, 28.6250], [77.2498, 28.6290], [77.2810, 28.6120]] },
+      // Congested: Ring Road South (heavy evacuation load)
+      { id: 'EV004', status: 'congested', direction: 'SOUTH-EAST',
+        path: [[77.2295, 28.6129], [77.2400, 28.6050], [77.2553, 28.5980]] },
+      // Blocked: Rajpath (security cordon — no public access)
+      { id: 'EV005', status: 'blocked',   direction: 'WEST-BLOCKED',
+        path: [[77.2295, 28.6129], [77.2167, 28.6133], [77.2081, 28.6145]] },
     ],
     stats: {
       populationAtRisk: 28400,

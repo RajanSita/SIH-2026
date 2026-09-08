@@ -20,6 +20,14 @@ const TYPE_HALF_SIZE = {
   cultural:    0.00120,
   convention:  0.00170,
   residential: 0.00110,
+  // Shelter building types
+  stadium:     0.00180,
+  arena:       0.00210,
+  cantonment:  0.00200,
+  auditorium:  0.00160,
+  medical:     0.00130,
+  transit:     0.00140,
+  educational: 0.00150,
 }
 
 /** Extrusion height multiplier per risk level — critical buildings tower above baseline */
@@ -131,20 +139,22 @@ export function roadsToGeoJSON(roads) {
   }
 }
 
-// ── Shelter type → visual radius (circle-radius in pixels) ──────────────────
-const SHELTER_TYPE_RADIUS = {
-  arena:       14,
-  cantonment:  13,
-  stadium:     11,
-  convention:  10,
-  auditorium:   9,
-  medical:      8,
+// ── Shelter base height per type (metres before risk mult) ───────────────────
+const SHELTER_BASE_HEIGHT = {
+  arena:       22,
+  cantonment:  18,
+  stadium:     16,
+  convention:  14,
+  auditorium:  12,
+  medical:     20,
 }
 
 /**
- * Convert enriched shelter objects to GeoJSON Points.
- * Radius is driven by type and state; colour by occupancy state.
- * Exposes zone, type, triageReady, helipad for popup display.
+ * Convert enriched shelter objects to GeoJSON Polygon extrusions (like buildings).
+ * Shelter state drives the colour:
+ *   available  → green  (#22C55E)
+ *   strained   → amber  (#EAB308)
+ *   overloaded → red    (#EF4444)
  *
  * @param {Array} shelters — enriched shelter state objects (have coordinates)
  * @returns {GeoJSON.FeatureCollection}
@@ -155,8 +165,17 @@ export function sheltersToGeoJSON(shelters) {
     features: shelters
       .filter((s) => Array.isArray(s.coordinates) && s.coordinates.length === 2)
       .map((s) => {
-        const baseRadius = SHELTER_TYPE_RADIUS[s.type] ?? 9
-        const stateBonus = s.state === 'overloaded' ? 3 : s.state === 'strained' ? 1 : 0
+        const [lng, lat] = s.coordinates
+        const halfSize = TYPE_HALF_SIZE[s.type] ?? 0.00160
+        const seed = s.id?.charCodeAt(s.id.length - 1) ?? 3
+        const wx = halfSize * (0.80 + (seed % 3) * 0.10)
+        const hy = halfSize * (0.80 + ((seed + 1) % 3) * 0.10)
+
+        // Height: base × state factor
+        const baseH   = SHELTER_BASE_HEIGHT[s.type] ?? 14
+        const stateMult = s.state === 'overloaded' ? 2.0 : s.state === 'strained' ? 1.4 : 1.0
+        const height  = Math.round(baseH * stateMult * 3.5)
+
         return {
           type: 'Feature',
           id: s.id,
@@ -173,11 +192,18 @@ export function sheltersToGeoJSON(shelters) {
             triageReady:        s.triageReady        ?? false,
             helipad:            s.helipad            ?? false,
             color:  SHELTER_FILL_COLORS[s.state] ?? SHELTER_FILL_COLORS.available,
-            radius: baseRadius + stateBonus,
+            height,
+            baseHeight: 0,
           },
           geometry: {
-            type: 'Point',
-            coordinates: s.coordinates,
+            type: 'Polygon',
+            coordinates: [[
+              [lng - wx, lat - hy],
+              [lng + wx, lat - hy],
+              [lng + wx, lat + hy],
+              [lng - wx, lat + hy],
+              [lng - wx, lat - hy],
+            ]],
           },
         }
       }),
@@ -225,10 +251,28 @@ export function threatZoneToGeoJSON(threatZone) {
   }
 }
 
-// ── Evacuation routes ─────────────────────────────────────────────────────────
+// ── Evacuation route status → visual properties ───────────────────────────────
+//
+//  primary   — wide solid green:  open, signal-prioritised, high-capacity
+//  secondary — cyan dashed:       alternative, lower capacity
+//  congested — amber dash-dot:    slow flow, chokepoint risk
+//  blocked   — red short-dash:    closed, debris/perimeter breach
+//  active    — alias for primary (legacy fallback)
+
+const EVAC_ROUTE_STYLE = {
+  primary:   { color: '#22C55E', width: 6,   opacity: 0.95, dasharray: null,      label: 'PRIMARY CORRIDOR' },
+  secondary: { color: '#06B6D4', width: 4.5, opacity: 0.88, dasharray: [6, 3],    label: 'ALT CORRIDOR' },
+  congested: { color: '#EAB308', width: 4,   opacity: 0.85, dasharray: [4, 2, 1, 2], label: 'CONGESTED' },
+  blocked:   { color: '#EF4444', width: 3.5, opacity: 0.90, dasharray: [2, 3],    label: 'BLOCKED' },
+  active:    { color: '#22C55E', width: 6,   opacity: 0.95, dasharray: null,      label: 'ACTIVE CORRIDOR' },
+}
 
 /**
  * Convert evacuation route objects to GeoJSON LineStrings.
+ * Each route carries color, width, opacity, dasharray, direction, label
+ * for fully data-driven MapLibre rendering.
+ *
+ * Route status codes: 'primary' | 'secondary' | 'congested' | 'blocked' | 'active'
  *
  * @param {Array} routes — evac route objects (have path, status, direction)
  * @returns {GeoJSON.FeatureCollection}
@@ -241,18 +285,25 @@ export function evacRoutesToGeoJSON(routes) {
     type: 'FeatureCollection',
     features: routes
       .filter((r) => Array.isArray(r.path) && r.path.length >= 2)
-      .map((r) => ({
-        type: 'Feature',
-        properties: {
-          id:        r.id        ?? '',
-          direction: r.direction ?? '',
-          status:    r.status    ?? 'active',
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates: r.path,
-        },
-      })),
+      .map((r) => {
+        const style = EVAC_ROUTE_STYLE[r.status] ?? EVAC_ROUTE_STYLE.active
+        return {
+          type: 'Feature',
+          properties: {
+            id:        r.id        ?? '',
+            direction: r.direction ?? '',
+            status:    r.status    ?? 'active',
+            label:     r.label    ?? style.label,
+            color:     style.color,
+            width:     style.width,
+            opacity:   style.opacity,
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: r.path,
+          },
+        }
+      }),
   }
 }
 
