@@ -14,7 +14,6 @@ const SYSTEM_STATUS = {
 export default function TopNav({
   activeScenario = null,
   currentKeyframeIndex = 0,
-  onOpenPresenterModal,
 }) {
   const [timeStr, setTimeStr] = useState('')
   const [dateStr, setDateStr] = useState('')
@@ -58,25 +57,24 @@ export default function TopNav({
               points="10,2 18,7 18,13 10,18 2,13 2,7"
               stroke="#3B82F6"
               strokeWidth="1.5"
-              fill="none"
+              fill="rgba(59,130,246,0.15)"
             />
-            <polygon
-              points="10,6 14,8.5 14,11.5 10,14 6,11.5 6,8.5"
-              fill="#3B82F6"
-              opacity="0.4"
-            />
+            <circle cx="10" cy="10" r="2.5" fill="#3B82F6" />
           </svg>
-          <span className="text-xs font-semibold text-ink tracking-wide font-mono">
-            URBAN RESILIENCE TWIN
+          <span className="font-mono text-xs font-bold tracking-widest text-ink uppercase">
+            URBAN RESILIENCE
+          </span>
+          <span className="font-mono text-2xs text-ink-faint hidden sm:inline">
+            // DECISION TWIN
           </span>
         </div>
 
-        <span className="w-px h-4 bg-hairline" aria-hidden="true" />
-
-        {/* System status badge */}
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-risk-green animate-pulse-slow" aria-hidden="true" />
-          <span className="badge-operational">{SYSTEM_STATUS.label}</span>
+        {/* System operational pill */}
+        <div className="hidden md:flex items-center gap-1.5 pl-3 border-l border-hairline">
+          <span className="w-1.5 h-1.5 rounded-full bg-risk-green animate-pulse" />
+          <span className="text-2xs font-mono font-medium text-risk-green tracking-wider uppercase">
+            {SYSTEM_STATUS.label}
+          </span>
         </div>
       </div>
 
@@ -104,31 +102,14 @@ export default function TopNav({
         )}
       </div>
 
-      {/* ── Right: system metadata & Presenter guide trigger ── */}
+      {/* ── Right: system metadata ── */}
       <div className="flex items-center gap-3 text-ink-faint font-mono text-2xs">
         <span className="hidden md:inline">{dateStr}</span>
         <span className="w-px h-3 bg-hairline hidden md:inline" aria-hidden="true" />
-        <span aria-label="Current live time">{timeStr} IST</span>
+        <span aria-label="Current live time" className="text-ink font-semibold">{timeStr} IST</span>
 
         <span className="w-px h-3 bg-hairline" aria-hidden="true" />
-
-        {/* Presenter Mode Button */}
-        <button
-          type="button"
-          onClick={onOpenPresenterModal}
-          aria-label="Open Presenter Script and Evaluation Guide (P)"
-          title="Open Presenter Script & Evaluation Guide (Press P)"
-          className="flex items-center gap-1.5 px-2 py-1 rounded bg-accent/15 hover:bg-accent/25 border border-accent/40 text-accent hover:text-white transition-all text-2xs font-mono font-bold"
-        >
-          <span aria-hidden="true">◈</span>
-          <span>PRESENTER SCRIPT</span>
-          <kbd className="hidden lg:inline text-[9px] px-1 py-0.2 rounded bg-surface border border-hairline opacity-75">
-            P
-          </kbd>
-        </button>
-
-        <span className="w-px h-3 bg-hairline" aria-hidden="true" />
-        <span className="hidden lg:inline">SIH 2026</span>
+        <span className="text-accent font-bold">SIH 2026</span>
       </div>
     </header>
   )

@@ -72,13 +72,74 @@ const ROAD_DEFS = [
 ]
 
 /**
- * SHELTERS — 3 permanent + 1 intervention-only
+ * SHELTERS — 8 permanent + 1 intervention-only, spanning full Delhi NCR grid.
+ * Each shelter has: id, name, coordinates [lng,lat], capacity, zone, type, triageReady, helipad
  */
 const SHELTER_DEFS = [
-  { id: 'S001', name: 'Talkatora Stadium',      coordinates: [77.1993, 28.6282], capacity: 5000 },
-  { id: 'S002', name: 'National Stadium',        coordinates: [77.2372, 28.6187], capacity: 8000 },
-  { id: 'S003', name: 'Siri Fort Auditorium',   coordinates: [77.2193, 28.5520], capacity: 3000 },
-  { id: 'S004', name: 'Pragati Maidan (Temp.)', coordinates: [77.2553, 28.6187], capacity: 500,  interventionOnly: true },
+  // ── West Central ──────────────────────────────────────────────────────────
+  {
+    id: 'S001', name: 'Talkatora Indoor Stadium',
+    coordinates: [77.1993, 28.6282], capacity: 5000,
+    zone: 'WEST CENTRAL', type: 'stadium',
+    triageReady: true, helipad: false,
+  },
+  // ── Central East ──────────────────────────────────────────────────────────
+  {
+    id: 'S002', name: 'Major Dhyan Chand National Stadium',
+    coordinates: [77.2372, 28.6187], capacity: 8000,
+    zone: 'CENTRAL EAST', type: 'stadium',
+    triageReady: true, helipad: true,
+  },
+  // ── South Central ─────────────────────────────────────────────────────────
+  {
+    id: 'S003', name: 'Siri Fort Auditorium Complex',
+    coordinates: [77.2193, 28.5520], capacity: 3000,
+    zone: 'SOUTH CENTRAL', type: 'auditorium',
+    triageReady: false, helipad: false,
+  },
+  // ── South (AIIMS Medical Reserve) ─────────────────────────────────────────
+  {
+    id: 'S005', name: 'AIIMS Trauma Reserve Wing',
+    coordinates: [77.2100, 28.5672], capacity: 1200,
+    zone: 'SOUTH CENTRAL', type: 'medical',
+    triageReady: true, helipad: true,
+  },
+  // ── North Central (Kashmere Gate) ─────────────────────────────────────────
+  {
+    id: 'S006', name: 'Ambedkar Stadium North',
+    coordinates: [77.2355, 28.6480], capacity: 6000,
+    zone: 'NORTH CENTRAL', type: 'stadium',
+    triageReady: true, helipad: false,
+  },
+  // ── East (Indira Gandhi Indoor Arena) ─────────────────────────────────────
+  {
+    id: 'S007', name: 'Indira Gandhi Indoor Arena',
+    coordinates: [77.2810, 28.6120], capacity: 15000,
+    zone: 'EAST', type: 'arena',
+    triageReady: true, helipad: true,
+  },
+  // ── South West (Delhi Cantonment) ─────────────────────────────────────────
+  {
+    id: 'S008', name: 'Delhi Cantonment Safe Base',
+    coordinates: [77.1450, 28.5940], capacity: 10000,
+    zone: 'SOUTH WEST', type: 'cantonment',
+    triageReady: true, helipad: true,
+  },
+  // ── South (Thyagaraj Sports Complex) ──────────────────────────────────────
+  {
+    id: 'S009', name: 'Thyagaraj Sports Complex',
+    coordinates: [77.1989, 28.5755], capacity: 6000,
+    zone: 'SOUTH', type: 'stadium',
+    triageReady: false, helipad: false,
+  },
+  // ── East Central — Intervention-only Rapid Deployment ─────────────────────
+  {
+    id: 'S004', name: 'Pragati Maidan — Bharat Mandapam Hall 14',
+    coordinates: [77.2553, 28.6187], capacity: 7500,
+    zone: 'EAST CENTRAL', type: 'convention',
+    triageReady: false, helipad: false,
+    interventionOnly: true,
+  },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────

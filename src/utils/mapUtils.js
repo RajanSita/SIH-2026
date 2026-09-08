@@ -131,10 +131,20 @@ export function roadsToGeoJSON(roads) {
   }
 }
 
-// ── Shelters ──────────────────────────────────────────────────────────────────
+// ── Shelter type → visual radius (circle-radius in pixels) ──────────────────
+const SHELTER_TYPE_RADIUS = {
+  arena:       14,
+  cantonment:  13,
+  stadium:     11,
+  convention:  10,
+  auditorium:   9,
+  medical:      8,
+}
 
 /**
  * Convert enriched shelter objects to GeoJSON Points.
+ * Radius is driven by type and state; colour by occupancy state.
+ * Exposes zone, type, triageReady, helipad for popup display.
  *
  * @param {Array} shelters — enriched shelter state objects (have coordinates)
  * @returns {GeoJSON.FeatureCollection}
@@ -144,25 +154,33 @@ export function sheltersToGeoJSON(shelters) {
     type: 'FeatureCollection',
     features: shelters
       .filter((s) => Array.isArray(s.coordinates) && s.coordinates.length === 2)
-      .map((s) => ({
-        type: 'Feature',
-        id: s.id,
-        properties: {
-          id:                 s.id                 ?? '',
-          name:               s.name               ?? '',
-          state:              s.state              ?? 'available',
-          capacity:           s.capacity           ?? 0,
-          occupancy:          s.occupancy          ?? 0,
-          utilizationPercent: s.utilizationPercent ?? 0,
-          status:             s.status             ?? '',
-          color:  SHELTER_FILL_COLORS[s.state] ?? SHELTER_FILL_COLORS.available,
-          radius: s.state === 'overloaded' ? 11 : s.state === 'strained' ? 9 : 7,
-        },
-        geometry: {
-          type: 'Point',
-          coordinates: s.coordinates,
-        },
-      })),
+      .map((s) => {
+        const baseRadius = SHELTER_TYPE_RADIUS[s.type] ?? 9
+        const stateBonus = s.state === 'overloaded' ? 3 : s.state === 'strained' ? 1 : 0
+        return {
+          type: 'Feature',
+          id: s.id,
+          properties: {
+            id:                 s.id                 ?? '',
+            name:               s.name               ?? '',
+            zone:               s.zone               ?? '',
+            type:               s.type               ?? 'stadium',
+            state:              s.state              ?? 'available',
+            capacity:           s.capacity           ?? 0,
+            occupancy:          s.occupancy          ?? 0,
+            utilizationPercent: s.utilizationPercent ?? 0,
+            status:             s.status             ?? '',
+            triageReady:        s.triageReady        ?? false,
+            helipad:            s.helipad            ?? false,
+            color:  SHELTER_FILL_COLORS[s.state] ?? SHELTER_FILL_COLORS.available,
+            radius: baseRadius + stateBonus,
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: s.coordinates,
+          },
+        }
+      }),
   }
 }
 
